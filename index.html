@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TUVN - AUTOMATIZACION E INSTRUMENTACION| Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&display=swap" rel="stylesheet">
+    
+    <style>
+        /* Tipografía: Inter para un look moderno de dashboard */
+        body { font-family: 'Inter', sans-serif; }
+
+        /* Contraste: Contenido principal oscuro */
+        .dashboard-main { 
+            background-color: #111827; /* gray-900 */
+        }
+
+        /* Estilo de Tarjeta (Similar a la referencia) */
+        .sensor-card {
+            transition: all 0.3s ease;
+            cursor: default;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            border-radius: 1rem; /* rounded-xl */
+        }
+        .sensor-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 30px rgba(0,0,0,0.3);
+        }
+
+        /* Simulación de Gráfico Circular (Progress Ring) */
+        .progress-ring {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            background: conic-gradient(
+                var(--progress-color, #3b82f6) 0%,
+                var(--progress-color, #3b82f6) var(--progress), 
+                #e5e7eb var(--progress),
+                #e5e7eb 100%
+            );
+        }
+        .progress-ring-inner {
+            background-color: white;
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            color: #1f2937; /* gray-800 */
+        }
+        
+        /* Estilos de Alerta (Rojo) */
+        .alert-card {
+            border: 2px solid #ef4444; /* Rojo */
+            animation: pulse-border-red 1.5s infinite;
+        }
+
+        @keyframes pulse-border-red {
+            0%, 100% { border-color: #ef4444; box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+            50% { border-color: #b91c1c; box-shadow: 0 0 0 8px rgba(239, 68, 68, 0); }
+        }
+    </style>
+</head>
+<body class="bg-gray-900 min-h-screen flex flex-col">
+
+    <header class="bg-slate-800 text-white shadow-xl border-b-4 border-red-600">
+        <div class="container mx-auto px-6 py-4 flex flex-col md:flex-row justify-between items-center gap-4">
+            
+            <div class="flex items-center gap-3">
+                <div class="bg-red-600 p-2 rounded-full">
+                    <i data-lucide="thermometer-sun" class="w-8 h-8 text-white"></i>
+                </div>
+                <div>
+                    <h1 class="text-3xl font-extrabold tracking-widest">TUVN</h1>
+                    <p class="text-xs text-slate-400 font-semibold tracking-widest">AUTOMATIZACION E INSTRUMENTACION</p>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-3 bg-slate-900 px-4 py-2 rounded-full border border-slate-700">
+                <div class="relative flex h-3 w-3">
+                    <span id="pingDot" class="ping-dot absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75 hidden"></span> 
+                    <span id="staticDot" class="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+                </div>
+                <span id="statusText" class="text-sm font-mono text-red-400 font-bold">DESCONECTADO</span>
+            </div>
+        </div>
+    </header>
+
+    <div class="bg-gray-800 border-b border-gray-700 shadow-sm">
+        <div class="container mx-auto px-6 py-2 flex flex-wrap justify-between items-center text-sm text-gray-400">
+            <div class="flex items-center gap-2">
+                <i data-lucide="users" class="w-4 h-4 text-red-500"></i>
+                <span class="font-semibold">Estudiantes: <span class="text-white font-extrabold">Alcaciega, Barahona, Chuqui</span></span>
+            </div>
+            <div class="flex gap-4 font-mono">
+                <i data-lucide="calendar" class="w-4 h-4 text-gray-500"></i>
+                <span id="dateDisplay" class="text-white">--/--/----</span>
+                <i data-lucide="clock" class="w-4 h-4 text-gray-500"></i>
+                <span id="timeDisplay" class="text-red-500 font-extrabold">--:--:--</span>
+            </div>
+        </div>
+    </div>
+
+    <main class="flex-grow container mx-auto px-6 py-10 dashboard-main text-gray-200">
+        
+        <div class="mb-10">
+            <h2 class="text-3xl font-extrabold text-white tracking-tight">Estado de Monitoreo</h2>
+            <p class="text-gray-400 mt-1">Valores de Temperatura en Tiempo Real | Max. Alerta: <span class="font-bold text-red-400">30.0 °C</span></p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+
+            <div id="card1" class="sensor-card bg-white p-6 border-2 border-transparent"> 
+                <div class="flex items-center gap-3 mb-4">
+                    <div class="p-3 rounded-xl bg-blue-500/10"> 
+                        <i data-lucide="thermometer" class="w-6 h-6 text-blue-500"></i>
+                    </div>
+                    <h3 class="text-lg font-bold text-gray-900"> Sala </h3>
+                </div>
+                
+                <div class="flex justify-center my-6">
+                    <div id="progress-ring-1" class="progress-ring" style="--progress: 0%; --progress-color: #3b82f6;">
+                        <div class="progress-ring-inner">
+                            <span class="text-2xl font-black text-gray-900" id="val1">--</span>
+                            <span class="text-xs text-gray-500 mt-0.5">°C</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="text-center mt-4">
+                    <p class="text-sm font-semibold text-gray-500">Riesgo Térmico</p>
+                    <p class="text-xl font-bold text-gray-900" id="percent1">--%</p>
+                    <div class="mt-4 text-xs font-mono text-gray-500 bg-gray-100 p-2 rounded">
+                        Dir: <span id="addr1" class="font-bold text-gray-700 break-all">--</span>
+                    </div>
+                </div>
+            </div>
+
+            <div id="card2" class="sensor-card bg-white p-6 border-2 border-transparent">
+                <div class="flex items-center gap-3 mb-4">
+                    <div class="p-3 rounded-xl bg-green-500/10">
+                        <i data-lucide="thermometer" class="w-6 h-6 text-green-500"></i>
+                    </div>
+                    <h3 class="text-lg font-bold text-gray-900"> Cocina </h3>
+                </div>
+                
+                <div class="flex justify-center my-6">
+                    <div id="progress-ring-2" class="progress-ring" style="--progress: 0%; --progress-color: #22c55e;">
+                        <div class="progress-ring-inner">
+                            <span class="text-2xl font-black text-gray-900" id="val2">--</span>
+                            <span class="text-xs text-gray-500 mt-0.5">°C</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="text-center mt-4">
+                    <p class="text-sm font-semibold text-gray-500">Riesgo Térmico</p>
+                    <p class="text-xl font-bold text-gray-900" id="percent2">--%</p>
+                    <div class="mt-4 text-xs font-mono text-gray-500 bg-gray-100 p-2 rounded">
+                        Dir: <span id="addr2" class="font-bold text-gray-700 break-all">--</span>
+                    </div>
+                </div>
+            </div>
+
+            <div id="card3" class="sensor-card bg-white p-6 border-2 border-transparent">
+                <div class="flex items-center gap-3 mb-4">
+                    <div class="p-3 rounded-xl bg-purple-500/10">
+                        <i data-lucide="thermometer" class="w-6 h-6 text-purple-500"></i>
+                    </div>
+                    <h3 class="text-lg font-bold text-gray-900"> Biblioteca </h3>
+                </div>
+                
+                <div class="flex justify-center my-6">
+                    <div id="progress-ring-3" class="progress-ring" style="--progress: 0%; --progress-color: #a855f7;">
+                        <div class="progress-ring-inner">
+                            <span class="text-2xl font-black text-gray-900" id="val3">--</span>
+                            <span class="text-xs text-gray-500 mt-0.5">°C</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="text-center mt-4">
+                    <p class="text-sm font-semibold text-gray-500">Riesgo Térmico</p>
+                    <p class="text-xl font-bold text-gray-900" id="percent3">--%</p>
+                    <div class="mt-4 text-xs font-mono text-gray-500 bg-gray-100 p-2 rounded">
+                        Dir: <span id="addr3" class="font-bold text-gray-700 break-all">--</span>
+                    </div>
+                </div>
+            </div>
+
+            <div id="card4" class="sensor-card bg-white p-6 border-2 border-transparent">
+                <div class="flex items-center gap-3 mb-4">
+                    <div class="p-3 rounded-xl bg-yellow-500/10">
+                        <i data-lucide="thermometer" class="w-6 h-6 text-yellow-500"></i>
+                    </div>
+                    <h3 class="text-lg font-bold text-gray-900"> Garaje </h3>
+                </div>
+                
+                <div class="flex justify-center my-6">
+                    <div id="progress-ring-4" class="progress-ring" style="--progress: 0%; --progress-color: #f59e0b;">
+                        <div class="progress-ring-inner">
+                            <span class="text-2xl font-black text-gray-900" id="val4">--</span>
+                            <span class="text-xs text-gray-500 mt-0.5">°C</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="text-center mt-4">
+                    <p class="text-sm font-semibold text-gray-500">Riesgo Térmico</p>
+                    <p class="text-xl font-bold text-gray-900" id="percent4">--%</p>
+                    <div class="mt-4 text-xs font-mono text-gray-500 bg-gray-100 p-2 rounded">
+                        Dir: <span id="addr4" class="font-bold text-gray-700 break-all">--</span>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <div class="mt-12 flex justify-center">
+            <button id="connectBtn" onclick="toggleConnection()" class="bg-red-600 hover:bg-red-500 text-white font-extrabold py-4 px-10 rounded-full shadow-xl flex items-center gap-3 transition-transform hover:scale-105 active:scale-95 text-lg">
+                <i data-lucide="bluetooth" class="w-6 h-6"></i>
+                <span>CONECTAR DISPOSITIVO</span>
+            </button>
+        </div>
+
+    </main>
+
+    <footer class="bg-gray-950 text-gray-600 py-4 text-center text-xs border-t-4 border-red-600">
+        <p>©️ 2025 Instituto Superior Tecnológico Vida Nueva | Desarrollado con Web Bluetooth API</p>
+    </footer>
+
+    <script>
+        // Inicializar iconos
+        lucide.createIcons();
+
+        // --- 1. RELOJ AUTOMÁTICO ---
+        function updateClock() {
+            const now = new Date();
+            const optionsDate = { year: 'numeric', month: 'short', day: 'numeric' };
+            document.getElementById('dateDisplay').textContent = now.toLocaleDateString('es-EC', optionsDate).toUpperCase();
+            document.getElementById('timeDisplay').textContent = now.toLocaleTimeString('es-EC', {hour12: false});
+        }
+        setInterval(updateClock, 1000);
+        updateClock();
+
+        // --- 2. CONFIGURACIÓN BLUETOOTH Y ALARMA ---
+        
+        const serviceUuid = "4fafc201-1fb5-459e-8fcc-c5c9c331914b";
+        const characteristicUuid = "beb5483e-36e1-4688-b7f5-ea07361b26a8";
+
+        // TEMPERATURA MÁXIMA PARA ALARMA (100% de Riesgo)
+        const MAX_TEMP_RISK = 30.0; 
+
+        let bluetoothDevice;
+        let bleCharacteristic;
+
+        // Referencias UI
+        const connectBtn = document.getElementById('connectBtn');
+        const statusText = document.getElementById('statusText');
+        const pingDot = document.getElementById('pingDot');
+        const staticDot = document.getElementById('staticDot');
+        
+        // Array de Objetos para manejar los elementos de forma limpia
+        const sensorRefs = [
+            { id: 1, val: document.getElementById('val1'), addr: document.getElementById('addr1'), card: document.getElementById('card1'), ring: document.getElementById('progress-ring-1'), percent: document.getElementById('percent1'), baseColor: '#3b82f6' },
+            { id: 2, val: document.getElementById('val2'), addr: document.getElementById('addr2'), card: document.getElementById('card2'), ring: document.getElementById('progress-ring-2'), percent: document.getElementById('percent2'), baseColor: '#22c55e' },
+            { id: 3, val: document.getElementById('val3'), addr: document.getElementById('addr3'), card: document.getElementById('card3'), ring: document.getElementById('progress-ring-3'), percent: document.getElementById('percent3'), baseColor: '#a855f7' },
+            { id: 4, val: document.getElementById('val4'), addr: document.getElementById('addr4'), card: document.getElementById('card4'), ring: document.getElementById('progress-ring-4'), percent: document.getElementById('percent4'), baseColor: '#f59e0b' }
+        ];
+
+        async function toggleConnection() {
+            if (bluetoothDevice && bluetoothDevice.gatt.connected) {
+                disconnect();
+            } else {
+                connect();
+            }
+        }
+
+        async function connect() {
+            try {
+                connectBtn.innerHTML = '<i data-lucide="loader" class="w-6 h-6 animate-spin"></i> <span>BUSCANDO DISPOSITIVO...</span>';
+                lucide.createIcons();
+                connectBtn.disabled = true;
+                
+                bluetoothDevice = await navigator.bluetooth.requestDevice({
+                    filters: [{ name: 'TUVN_Termometros' }], 
+                    optionalServices: [serviceUuid]
+                });
+
+                bluetoothDevice.addEventListener('gattserverdisconnected', onDisconnected);
+
+                const server = await bluetoothDevice.gatt.connect();
+                const service = await server.getPrimaryService(serviceUuid);
+                bleCharacteristic = await service.getCharacteristic(characteristicUuid);
+
+                await bleCharacteristic.startNotifications();
+                bleCharacteristic.addEventListener('characteristicvaluechanged', handleData);
+
+                updateUIConnected();
+
+            } catch (error) {
+                if (error.name !== 'NotFoundError' && error.code !== 8) {
+                    console.error('Error al conectar:', error);
+                    alert('Error al conectar: ' + error.message);
+                }
+                updateUIDisconnected();
+            } finally {
+                connectBtn.disabled = false;
+            }
+        }
+
+        function disconnect() {
+            if (bluetoothDevice && bluetoothDevice.gatt.connected) {
+                bluetoothDevice.gatt.disconnect();
+            }
+        }
+
+        function onDisconnected() {
+            updateUIDisconnected();
+        }
+
+        // --- 3. PROCESAMIENTO DE DATOS ---
+        function handleData(event) {
+            const value = event.target.value;
+            const decoder = new TextDecoder('utf-8');
+            const jsonString = decoder.decode(value);
+
+            try {
+                const data = JSON.parse(jsonString);
+
+                sensorRefs.forEach((ref) => {
+                    const tempKey = `s${ref.id}`;
+                    const addrKey = `a${ref.id}`;
+
+                    if(data[tempKey] !== undefined) {
+                        const tempValue = parseFloat(data[tempKey]);
+                        ref.val.innerText = tempValue.toFixed(1);
+
+                        // 1. Calcular Porcentaje de Riesgo (0% a 100%)
+                        let riskPercent = Math.min(100, Math.max(0, (tempValue / MAX_TEMP_RISK) * 100));
+                        ref.percent.innerText = `${riskPercent.toFixed(0)}%`;
+
+                        // 2. Lógica de Alerta Visual y Gráfico
+                        let ringColor = ref.baseColor;
+
+                        if (tempValue >= MAX_TEMP_RISK * 0.9) { // 90% del riesgo = Alerta Naranja
+                            ref.card.classList.add('alert-card');
+                            ringColor = '#f59e0b'; // color Naranja
+                        } 
+                        if (tempValue >= MAX_TEMP_RISK) { // 100% del riesgo = Alerta Roja Crítica
+                            ref.card.classList.add('alert-card');
+                            ringColor = '#ef4444'; // color Rojo
+                        } else {
+                            ref.card.classList.remove('alert-card');
+                        }
+
+                        // Aplicar al Gráfico Circular
+                        ref.ring.style.setProperty('--progress', `${riskPercent}%`);
+                        ref.ring.style.setProperty('--progress-color', ringColor);
+                        // Cambiar el color del texto si hay alerta
+                        ref.val.style.color = (tempValue >= MAX_TEMP_RISK) ? '#ef4444' : '#1f2937';
+                        ref.percent.style.color = (tempValue >= MAX_TEMP_RISK) ? '#ef4444' : '#1f2937';
+                    }
+
+                    if(data[addrKey] !== undefined) {
+                        ref.addr.innerText = data[addrKey];
+                    }
+                });
+
+                // Efecto visual de "latido" al recibir datos
+                pingDot.classList.remove('hidden');
+                setTimeout(() => {
+                    pingDot.classList.add('hidden');
+                }, 500);
+
+            } catch (e) {
+                console.error("Error al leer o parsear JSON:", e);
+            }
+        }
+
+        // --- 4. FUNCIONES UI ---
+        function updateUIConnected() {
+            connectBtn.innerHTML = '<i data-lucide="power" class="w-6 h-6"></i> DESCONECTAR SISTEMA';
+            lucide.createIcons();
+            connectBtn.classList.remove('bg-slate-800', 'hover:bg-slate-700', 'bg-red-600', 'hover:bg-red-500');
+            connectBtn.classList.add('bg-emerald-600', 'hover:bg-emerald-500');
+            
+            statusText.innerText = "CONECTADO";
+            statusText.classList.replace('text-red-400', 'text-emerald-400');
+            staticDot.classList.replace('bg-red-500', 'bg-emerald-500');
+            pingDot.classList.replace('bg-red-400', 'bg-emerald-400');
+        }
+
+        function updateUIDisconnected() {
+            connectBtn.innerHTML = '<i data-lucide="bluetooth" class="w-6 h-6"></i> CONECTAR DISPOSITIVO';
+            lucide.createIcons(); 
+            connectBtn.classList.remove('bg-emerald-600', 'hover:bg-emerald-500');
+            connectBtn.classList.add('bg-red-600', 'hover:bg-red-500');
+
+            statusText.innerText = "DESCONECTADO";
+            statusText.classList.replace('text-emerald-400', 'text-red-400');
+            staticDot.classList.replace('bg-emerald-500', 'bg-red-500');
+            pingDot.classList.add('hidden');
+
+            // Resetear valores, direcciones, alertas y gráficos
+            sensorRefs.forEach(ref => {
+                ref.val.innerText = "--";
+                ref.addr.innerText = "--";
+                ref.percent.innerText = "--%";
+                ref.card.classList.remove('alert-card');
+                ref.ring.style.setProperty('--progress', `0%`);
+                ref.ring.style.setProperty('--progress-color', ref.baseColor);
+                ref.val.style.color = '#1f2937';
+                ref.percent.style.color = '#1f2937';
+            });
+        }
+    </script>
+</body>
+</html>
